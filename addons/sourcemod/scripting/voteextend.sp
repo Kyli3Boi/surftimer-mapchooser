@@ -15,6 +15,7 @@ ConVar g_hVoteExtendTime; 										// Extend time CVar
 ConVar g_hMaxVoteExtends; 										// Extend max count CVar
 ConVar g_iInitialVoteDelay;
 ConVar g_bOneVotePerPlayer;
+ConVar g_vipfeature;
 
 int g_VoteExtends = 0; 											// How many extends have happened in current map
 char g_szSteamID[MAXPLAYERS + 1][32];							// Client's steamID
@@ -31,13 +32,14 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {
-	RegAdminCmd("sm_ve", Command_VoteExtend, ADMFLAG_RESERVATION, "SurfTimer | Vote to extend the map");
-	RegAdminCmd("sm_voteextend", Command_VoteExtend, ADMFLAG_RESERVATION, "SurfTimer | Vote to extend the map");
-	RegAdminCmd("sm_extend", Command_VoteExtend, ADMFLAG_RESERVATION, "SurfTimer | Vote to extend the map");
+	RegConsoleCmd("sm_ve", Command_VoteExtend, "SurfTimer | Vote to extend the map");
+	RegConsoleCmd("sm_voteextend", Command_VoteExtend, "SurfTimer | Vote to extend the map");
+	RegConsoleCmd("sm_extend", Command_VoteExtend, "SurfTimer | Vote to extend the map");
 	g_hMaxVoteExtends = CreateConVar("ck_max_vote_extends", "2", "The max number of VIP vote extends", FCVAR_NOTIFY, true, 0.0);
 	g_hVoteExtendTime = CreateConVar("ck_vote_extend_time", "10.0", "The time in minutes that is added to the remaining map time if a vote extend is successful.", FCVAR_NOTIFY, true, 0.0);
-	g_iInitialVoteDelay = CreateConVar("ck_ve_initialdelay", "5", "The time in minutes when first vote can take place", _, true, 0.0);
-	g_bOneVotePerPlayer = CreateConVar("ck_onevote", "0", "Can vote be started again from the same person. 0 - Yes, 1 - No.", _, true, 0.0, true, 1.0);
+	g_iInitialVoteDelay = CreateConVar("ck_ve_initialdelay", "5", "The time in minutes when first vote can take place", FCVAR_NOTIFY, true, 0.0);
+	g_bOneVotePerPlayer = CreateConVar("ck_ve_onevote", "0", "Can vote be started again from the same person. 0 - Yes, 1 - No.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_vipfeature = CreateConVar("ck_ve_vip", "1", "Are commands only for vips. 1-Yes, 0-No.", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 }
 
 public void OnMapStart()
@@ -57,6 +59,15 @@ public Action Command_VoteExtend(int client, int args)
 {
 	if(!IsValidClient(client))
 		return Plugin_Handled;
+
+	if(g_vipfeature)
+	{
+		if(!surftimer_IsClientVip(client))
+		{
+			ReplyToCommand(client, "SurfTimer | This is a VIP feature.");
+			return Plugin_Handled;
+		}
+	}
 	
 	if (IsVoteInProgress())
 	{
@@ -82,7 +93,7 @@ public Action Command_VoteExtend(int client, int args)
 	// Here we go through and make sure this user has not already voted. This persists throughout map.
 	if (GetConVarBool(g_bOneVotePerPlayer))
 	{
-        for (int i = 0; i < g_VoteExtends; i++)
+		for (int i = 0; i < g_VoteExtends; i++)
 		{
 			if (StrEqual(g_szUsedVoteExtend[i], g_szSteamID[client], false))
 			{
